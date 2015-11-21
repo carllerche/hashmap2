@@ -8,6 +8,7 @@ implemented in Rust's stdlib.
 
 * Added `HashMap::take` which is the same as `HashMap::remove` but also
   returns the key.
-* Changed `HashMap::entry` to take a `Cow` of the key.
+* Added `HashMap::entry2` to take a `Cow` key.
+* Added `::key` to the various `Entry` types
 
 Forked from `d1c7a93eff5bd27632130cc5bcdaac54c32bca08`

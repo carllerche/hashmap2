@@ -1563,6 +1563,24 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 }
 
 impl<'a, K, V> Entry<'a, K, V> {
+    /// Returns the entry key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashmap2::HashMap;
+    ///
+    /// let mut map = HashMap::<String, u32>::new();
+    ///
+    /// assert_eq!("hello", map.entry("hello".to_string()).key());
+    /// ```
+    pub fn key(&self) -> &K {
+        match *self {
+            Occupied(ref entry) => entry.key(),
+            Vacant(ref entry) => entry.key(),
+        }
+    }
+
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     pub fn or_insert(self, default: V) -> &'a mut V {
@@ -1610,6 +1628,22 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     pub fn remove(self) -> V {
         pop_internal(self.elem).1
     }
+
+    /// Gets a reference to the entry key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashmap2::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    ///
+    /// map.insert("foo".to_string(), 1);
+    /// assert_eq!("foo", map.entry("foo".to_string()).key());
+    /// ```
+    pub fn key(&self) -> &K {
+        self.elem.read().0
+    }
 }
 
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
@@ -1624,6 +1658,21 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
                 bucket.put(self.hash, self.key, value).into_mut_refs().1
             }
         }
+    }
+
+    /// Gets a reference to the entry key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashmap2::HashMap;
+    ///
+    /// let mut map = HashMap::<String, u32>::new();
+    ///
+    /// assert_eq!("foo", map.entry("foo".to_string()).key());
+    /// ```
+    pub fn key(&self) -> &K {
+        &self.key
     }
 }
 
