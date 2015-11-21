@@ -1,7 +1,7 @@
 [package]
 
 name    = "hashmap2"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>",
            "Jorge Aparicio <japaricious@gmail.com>",
            "Alexis Beingessner <a.beingessner@gmail.com>",
