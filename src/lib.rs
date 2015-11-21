@@ -252,7 +252,7 @@ fn test_resize_policy() {
 /// # Examples
 ///
 /// ```
-/// use std::collections::HashMap;
+/// use hashmap2::HashMap;
 ///
 /// // type inference lets us omit an explicit type signature (which
 /// // would be `HashMap<&str, &str>` in this example).
@@ -292,7 +292,7 @@ fn test_resize_policy() {
 /// We must also derive `PartialEq`.
 ///
 /// ```
-/// use std::collections::HashMap;
+/// use hashmap2::HashMap;
 ///
 /// #[derive(Hash, Eq, PartialEq, Debug)]
 /// struct Viking {
@@ -523,7 +523,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// ```
     #[inline]
@@ -536,7 +536,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     /// let mut map: HashMap<&str, isize> = HashMap::with_capacity(10);
     /// ```
     #[inline]
@@ -557,8 +557,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     /// #![feature(hashmap_hasher)]
     ///
-    /// use std::collections::HashMap;
-    /// use std::collections::hash_map::RandomState;
+    /// use hashmap2::HashMap;
+    /// use hashmap2::RandomState;
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_hash_state(s);
@@ -586,8 +586,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     /// #![feature(hashmap_hasher)]
     ///
-    /// use std::collections::HashMap;
-    /// use std::collections::hash_map::RandomState;
+    /// use hashmap2::HashMap;
+    /// use hashmap2::RandomState;
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_capacity_and_hash_state(10, s);
@@ -615,7 +615,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     /// let map: HashMap<isize, isize> = HashMap::with_capacity(100);
     /// assert!(map.capacity() >= 100);
     /// ```
@@ -635,7 +635,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// map.reserve(10);
     /// ```
@@ -741,7 +741,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map: HashMap<isize, isize> = HashMap::with_capacity(100);
     /// map.insert(1, 2);
@@ -832,7 +832,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1);
@@ -856,7 +856,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1);
@@ -880,7 +880,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1);
@@ -902,7 +902,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1);
@@ -927,7 +927,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut letters = HashMap::new();
     ///
@@ -954,7 +954,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut a = HashMap::new();
     /// assert_eq!(a.len(), 0);
@@ -968,7 +968,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut a = HashMap::new();
     /// assert!(a.is_empty());
@@ -986,7 +986,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     /// #![feature(drain)]
     ///
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut a = HashMap::new();
     /// a.insert(1, "a");
@@ -1015,7 +1015,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut a = HashMap::new();
     /// a.insert(1, "a");
@@ -1036,7 +1036,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert(1, "a");
@@ -1058,7 +1058,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert(1, "a");
@@ -1080,7 +1080,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert(1, "a");
@@ -1108,7 +1108,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// assert_eq!(map.insert(37, "a"), None);
@@ -1139,7 +1139,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert(1, "a");
@@ -1372,7 +1372,7 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
+    /// use hashmap2::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1);
