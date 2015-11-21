@@ -30,7 +30,7 @@ use self::Entry::*;
 use self::SearchResult::*;
 use self::VacantEntryState::*;
 
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::cmp::{max, Eq, PartialEq};
 use std::default::Default;
 use std::fmt::{self, Debug};
@@ -949,6 +949,38 @@ impl<K, V, S> HashMap<K, V, S>
         search_entry_hashed(&mut self.table, hash, key)
     }
 
+    /// Gets the given key's corresponding entry in the map for in-place
+    /// manipulation. Only copies the key if a new entry is inserted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashmap2::HashMap;
+    /// use std::borrow::Cow;
+    ///
+    /// let mut m = HashMap::new();
+    ///
+    /// m.entry(Cow::Owned("foo".to_string())).or_insert(0);
+    /// m.entry(Cow::Borrowed("bar")).or_insert(1);
+    ///
+    ///
+    /// assert_eq!(m["foo"], 0);
+    /// assert_eq!(m["bar"], 1);
+    /// ```
+    pub fn entry2<'a, Q: ?Sized>(&mut self, key: Cow<'a, Q>) -> Entry<K, V>
+            where K: Clone + Borrow<Q>,
+                  Q: 'a + ToOwned<Owned=K> + Hash + Eq {
+        // Gotta resize now.
+        self.reserve(1);
+
+        let hash = {
+            let b: &Q = key.borrow();
+            self.make_hash(b)
+        };
+
+        search_entry_hashed2(&mut self.table, hash, key)
+    }
+
     /// Returns the number of elements in the map.
     ///
     /// # Examples
@@ -1222,6 +1254,57 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
             return Vacant(VacantEntry {
                 hash: hash,
                 key: k,
+                elem: NeqElem(bucket, robin_ib as usize),
+            });
+        }
+
+        probe = bucket.next();
+        assert!(probe.index() != ib + size + 1);
+    }
+}
+
+// Not copying this requires specialization
+fn search_entry_hashed2<'a, K: Eq, V, Q: ?Sized>(table: &'a mut RawTable<K,V>, hash: SafeHash, k: Cow<Q>)
+        -> Entry<'a, K, V>
+        where K: Borrow<Q>, Q: ToOwned<Owned=K> + Eq,
+{
+    // Worst case, we'll find one empty bucket among `size + 1` buckets.
+    let size = table.size();
+    let mut probe = Bucket::new(table, hash);
+    let ib = probe.index();
+
+    loop {
+        let bucket = match probe.peek() {
+            Empty(bucket) => {
+                // Found a hole!
+                return Vacant(VacantEntry {
+                    hash: hash,
+                    key: k.into_owned(),
+                    elem: NoElem(bucket),
+                });
+            },
+            Full(bucket) => bucket
+        };
+
+        // hash matches?
+        if bucket.hash() == hash {
+            let b: &Q = k.borrow();
+
+            // key matches?
+            if *b == *bucket.read().0.borrow() {
+                return Occupied(OccupiedEntry{
+                    elem: bucket,
+                });
+            }
+        }
+
+        let robin_ib = bucket.index() as isize - bucket.distance() as isize;
+
+        if (ib as isize) < robin_ib {
+            // Found a luckier bucket than me. Better steal his spot.
+            return Vacant(VacantEntry {
+                hash: hash,
+                key: k.into_owned(),
                 elem: NeqElem(bucket, robin_ib as usize),
             });
         }
