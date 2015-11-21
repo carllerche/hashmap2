@@ -13,6 +13,7 @@
     filling_drop,
     hashmap_hasher,
     heap_api,
+    into_cow,
     oom,
     unique,
     unsafe_no_drop_flag,
@@ -30,7 +31,7 @@ use self::Entry::*;
 use self::SearchResult::*;
 use self::VacantEntryState::*;
 
-use std::borrow::{Borrow, Cow};
+use std::borrow::{Borrow, IntoCow, Cow};
 use std::cmp::{max, Eq, PartialEq};
 use std::default::Default;
 use std::fmt::{self, Debug};
@@ -967,11 +968,13 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(m["foo"], 0);
     /// assert_eq!(m["bar"], 1);
     /// ```
-    pub fn entry2<'a, Q: ?Sized>(&mut self, key: Cow<'a, Q>) -> Entry<K, V>
+    pub fn entry2<'a, Q: ?Sized, R: IntoCow<'a, Q>>(&mut self, key: R) -> Entry<K, V>
             where K: Clone + Borrow<Q>,
                   Q: 'a + ToOwned<Owned=K> + Hash + Eq {
         // Gotta resize now.
         self.reserve(1);
+
+        let key = key.into_cow();
 
         let hash = {
             let b: &Q = key.borrow();
