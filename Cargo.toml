@@ -1,0 +1,14 @@
+[package]
+
+name    = "hashmap2"
+version = "0.1.0"
+authors = ["Rust std::collections::HashMap authors",
+           "Carl Lerche <me@carllerche.com>"]
+
+license     = "MIT/Apache-2.0"
+description = "Fork of Rust Nightly's HashMap"
+repository  = "https://github.com/carllerche/hashmap2"
+homepage    = "https://github.com/carllerche/hashmap2"
+
+[dependencies]
+rand = "0.3.12"
