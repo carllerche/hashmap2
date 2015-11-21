@@ -1155,6 +1155,33 @@ impl<K, V, S> HashMap<K, V, S>
 
         self.search_mut(k).map(|bucket| pop_internal(bucket).1)
     }
+
+    /// Removes a key from the map, returning the (key, value) tuple at the key
+    /// if the key was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashmap2::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.take(&1), Some((1, "a")));
+    /// assert_eq!(map.take(&1), None);
+    /// ```
+    pub fn take<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
+        where K: Borrow<Q>, Q: Hash + Eq
+    {
+        if self.table.size() == 0 {
+            return None
+        }
+
+        self.search_mut(k).map(|bucket| pop_internal(bucket))
+    }
 }
 
 fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHash, k: K)
@@ -2314,5 +2341,15 @@ mod test_map {
         assert_eq!(a[&1], "one");
         assert_eq!(a[&2], "two");
         assert_eq!(a[&3], "three");
+    }
+
+    #[test]
+    fn test_take() {
+        let mut a = HashMap::new();
+        a.insert("foo".to_string(), 1);
+
+        let (k, v): (String, u32) = a.take("foo").unwrap();
+
+        assert_eq!(k, "foo".to_string());
     }
 }
