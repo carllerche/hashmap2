@@ -957,13 +957,11 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// ```
     /// use hashmap2::HashMap;
-    /// use std::borrow::Cow;
     ///
     /// let mut m = HashMap::new();
     ///
-    /// m.entry(Cow::Owned("foo".to_string())).or_insert(0);
-    /// m.entry(Cow::Borrowed("bar")).or_insert(1);
-    ///
+    /// m.entry2("foo".to_string()).or_insert(0);
+    /// m.entry2("bar").or_insert(1);
     ///
     /// assert_eq!(m["foo"], 0);
     /// assert_eq!(m["bar"], 1);
