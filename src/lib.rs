@@ -2485,6 +2485,7 @@ mod test_map {
 
         let (k, v): (String, u32) = a.take("foo").unwrap();
 
-        assert_eq!(k, "foo".to_string());
+        assert_eq!(k, "foo");
+        assert_eq!(v, 1);
     }
 }
