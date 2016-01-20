@@ -15,7 +15,6 @@ use std::hash::{Hash, Hasher};
 use std::marker;
 use std::mem::{align_of, size_of};
 use std::mem;
-use std::num::wrapping::OverflowingOps;
 use std::ops::{Deref, DerefMut};
 use std::ptr::{self, Unique};
 use std::collections::hash_state::HashState;
@@ -123,7 +122,7 @@ pub enum BucketState<K, V, M> {
 // A GapThenFull encapsulates the state of two consecutive buckets at once.
 // The first bucket, called the gap, is known to be empty.
 // The second bucket is full.
-struct GapThenFull<K, V, M> {
+pub struct GapThenFull<K, V, M> {
     gap: EmptyBucket<K, V, ()>,
     full: FullBucket<K, V, M>,
 }
