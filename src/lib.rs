@@ -11,13 +11,12 @@
     alloc,
     dropck_parametricity,
     filling_drop,
-    hashmap_hasher,
     heap_api,
     oom,
     unique,
     unsafe_no_drop_flag)]
 
-#![cfg_attr(test, feature(range_inclusive))]
+#![cfg_attr(test, feature(inclusive_range_syntax))]
 
 extern crate alloc;
 extern crate rand;
@@ -33,7 +32,7 @@ use std::borrow::{Borrow, Cow};
 use std::cmp::{max, Eq, PartialEq};
 use std::default::Default;
 use std::fmt::{self, Debug};
-use std::hash::{Hash, SipHasher};
+use std::hash::{BuildHasher, Hash, SipHasher};
 use std::iter::{self, Iterator, ExactSizeIterator, IntoIterator, FromIterator, Extend, Map};
 use std::mem::{self, replace};
 use std::ops::{Deref, FnMut, FnOnce, Index};
@@ -54,7 +53,6 @@ use table::BucketState::{
     Empty,
     Full,
 };
-use std::collections::hash_state::HashState;
 
 const INITIAL_LOG2_CAP: usize = 5;
 const INITIAL_CAPACITY: usize = 1 << INITIAL_LOG2_CAP; // 2^5
@@ -469,7 +467,7 @@ impl<K, V, M> SearchResult<K, V, M> {
 }
 
 impl<K, V, S> HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     fn make_hash<X: ?Sized>(&self, x: &X) -> SafeHash where X: Hash {
         table::make_hash(&self.hash_state, x)
@@ -545,7 +543,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
 }
 
 impl<K, V, S> HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     /// Creates an empty hashmap which will use the given hasher to hash keys.
     ///
@@ -955,11 +953,12 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// ```
     /// use hashmap2::HashMap;
+    /// use std::borrow::Cow;
     ///
     /// let mut m = HashMap::new();
     ///
-    /// m.entry2("foo".to_string()).or_insert(0);
-    /// m.entry2("bar").or_insert(1);
+    /// m.entry2(Cow::Owned("foo".to_string()) as Cow<str>).or_insert(0);
+    /// m.entry2(Cow::Borrowed("bar")).or_insert(1);
     ///
     /// assert_eq!(m["foo"], 0);
     /// assert_eq!(m["bar"], 1);
@@ -1312,7 +1311,7 @@ fn search_entry_hashed2<'a, K: Eq, V, Q: ?Sized>(table: &'a mut RawTable<K,V>, h
 }
 
 impl<K, V, S> PartialEq for HashMap<K, V, S>
-    where K: Eq + Hash, V: PartialEq, S: HashState
+    where K: Eq + Hash, V: PartialEq, S: BuildHasher
 {
     fn eq(&self, other: &HashMap<K, V, S>) -> bool {
         if self.len() != other.len() { return false; }
@@ -1324,11 +1323,11 @@ impl<K, V, S> PartialEq for HashMap<K, V, S>
 }
 
 impl<K, V, S> Eq for HashMap<K, V, S>
-    where K: Eq + Hash, V: Eq, S: HashState
+    where K: Eq + Hash, V: Eq, S: BuildHasher
 {}
 
 impl<K, V, S> Debug for HashMap<K, V, S>
-    where K: Eq + Hash + Debug, V: Debug, S: HashState
+    where K: Eq + Hash + Debug, V: Debug, S: BuildHasher
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
@@ -1337,7 +1336,7 @@ impl<K, V, S> Debug for HashMap<K, V, S>
 
 impl<K, V, S> Default for HashMap<K, V, S>
     where K: Eq + Hash,
-          S: HashState + Default,
+          S: BuildHasher + Default,
 {
     fn default() -> HashMap<K, V, S> {
         HashMap::with_hash_state(Default::default())
@@ -1347,7 +1346,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
 impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
     where K: Eq + Hash + Borrow<Q>,
           Q: Eq + Hash,
-          S: HashState,
+          S: BuildHasher,
 {
     type Output = V;
 
@@ -1445,7 +1444,7 @@ enum VacantEntryState<K, V, M> {
 }
 
 impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
@@ -1456,7 +1455,7 @@ impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
 }
 
 impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
@@ -1467,7 +1466,7 @@ impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
 }
 
 impl<K, V, S> IntoIterator for HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
@@ -1674,7 +1673,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
 }
 
 impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState + Default
+    where K: Eq + Hash, S: BuildHasher + Default
 {
     fn from_iter<T: IntoIterator<Item=(K, V)>>(iterable: T) -> HashMap<K, V, S> {
         let iter = iterable.into_iter();
@@ -1687,7 +1686,7 @@ impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
 }
 
 impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
@@ -1697,7 +1696,7 @@ impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
 }
 
 impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
-    where K: Eq + Hash + Copy, V: Copy, S: HashState
+    where K: Eq + Hash + Copy, V: Copy, S: BuildHasher
 {
     fn extend<T: IntoIterator<Item=(&'a K, &'a V)>>(&mut self, iter: T) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
@@ -1725,10 +1724,10 @@ impl RandomState {
     }
 }
 
-impl HashState for RandomState {
+impl BuildHasher for RandomState {
     type Hasher = SipHasher;
     #[inline]
-    fn hasher(&self) -> SipHasher {
+    fn build_hasher(&self) -> SipHasher {
         SipHasher::new_with_keys(self.k0, self.k1)
     }
 }
@@ -1741,7 +1740,7 @@ impl Default for RandomState {
 }
 
 impl<K, S, Q: ?Sized> Recover<Q> for HashMap<K, (), S>
-    where K: Eq + Hash + Borrow<Q>, S: HashState, Q: Eq + Hash
+    where K: Eq + Hash + Borrow<Q>, S: BuildHasher, Q: Eq + Hash
 {
     type Key = K;
 
@@ -1773,7 +1772,6 @@ impl<K, S, Q: ?Sized> Recover<Q> for HashMap<K, (), S>
 mod test_map {
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
-    use std::iter::range_inclusive;
     use std::cell::RefCell;
     use rand::{thread_rng, Rng};
 
@@ -1969,42 +1967,42 @@ mod test_map {
         for _ in 0..10 {
             assert!(m.is_empty());
 
-            for i in range_inclusive(1, 1000) {
+            for i in 1...1000 {
                 assert!(m.insert(i, i).is_none());
 
-                for j in range_inclusive(1, i) {
+                for j in 1...i {
                     let r = m.get(&j);
                     assert_eq!(r, Some(&j));
                 }
 
-                for j in range_inclusive(i+1, 1000) {
+                for j in i+1...1000 {
                     let r = m.get(&j);
                     assert_eq!(r, None);
                 }
             }
 
-            for i in range_inclusive(1001, 2000) {
+            for i in 1001...2000 {
                 assert!(!m.contains_key(&i));
             }
 
             // remove forwards
-            for i in range_inclusive(1, 1000) {
+            for i in 1...1000 {
                 assert!(m.remove(&i).is_some());
 
-                for j in range_inclusive(1, i) {
+                for j in 1...i {
                     assert!(!m.contains_key(&j));
                 }
 
-                for j in range_inclusive(i+1, 1000) {
+                for j in i+1...1000 {
                     assert!(m.contains_key(&j));
                 }
             }
 
-            for i in range_inclusive(1, 1000) {
+            for i in 1...1000 {
                 assert!(!m.contains_key(&i));
             }
 
-            for i in range_inclusive(1, 1000) {
+            for i in 1...1000 {
                 assert!(m.insert(i, i).is_none());
             }
 
@@ -2012,11 +2010,11 @@ mod test_map {
             for i in (1..1001).rev() {
                 assert!(m.remove(&i).is_some());
 
-                for j in range_inclusive(i, 1000) {
+                for j in i...1000 {
                     assert!(!m.contains_key(&j));
                 }
 
-                for j in range_inclusive(1, i-1) {
+                for j in 1...i-1 {
                     assert!(m.contains_key(&j));
                 }
             }
