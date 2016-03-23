@@ -1176,9 +1176,9 @@ fn search_entry_hashed2<'a, K: Eq, V, Q: ?Sized>(table: &'a mut RawTable<K,V>, h
         where K: Borrow<Q>, Q: ToOwned<Owned=K> + Eq,
 {
     // Worst case, we'll find one empty bucket among `size + 1` buckets.
-    let size = table.size();
+    let size = table.size() as isize;
     let mut probe = Bucket::new(table, hash);
-    let ib = probe.index();
+    let ib = probe.index() as isize;
 
     loop {
         let bucket = match probe.peek() {
@@ -1208,7 +1208,7 @@ fn search_entry_hashed2<'a, K: Eq, V, Q: ?Sized>(table: &'a mut RawTable<K,V>, h
 
         let robin_ib = bucket.index() as isize - bucket.displacement() as isize;
 
-        if (ib as isize) < robin_ib {
+        if ib < robin_ib {
             // Found a luckier bucket than me. Better steal his spot.
             return Vacant(VacantEntry {
                 hash: hash,
@@ -1218,7 +1218,7 @@ fn search_entry_hashed2<'a, K: Eq, V, Q: ?Sized>(table: &'a mut RawTable<K,V>, h
         }
 
         probe = bucket.next();
-        assert!(probe.index() != ib + size + 1);
+        debug_assert!(probe.index() as isize != ib + size + 1);
     }
 }
 
