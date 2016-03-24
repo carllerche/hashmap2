@@ -11,7 +11,8 @@
 use alloc::heap::{allocate, deallocate, EMPTY};
 
 use std::cmp;
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::{Hash, Hasher, BuildHasher};
+use std::intrinsics::needs_drop;
 use std::marker;
 use std::mem::{align_of, size_of};
 use std::mem;
@@ -200,20 +201,44 @@ impl<K, V, M> EmptyBucket<K, V, M> {
     pub fn table(&self) -> &M {
         &self.table
     }
-    /// Move out the reference to the table.
-    pub fn into_table(self) -> M {
-        self.table
-    }
 }
 
 impl<K, V, M> Bucket<K, V, M> {
-    /// Move out the reference to the table.
-    pub fn into_table(self) -> M {
-        self.table
-    }
     /// Get the raw index.
     pub fn index(&self) -> usize {
         self.idx
+    }
+}
+
+impl<K, V, M> Deref for FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> {
+    type Target = RawTable<K, V>;
+    fn deref(&self) -> &RawTable<K, V> {
+        &self.table
+    }
+}
+
+/// `Put` is implemented for types which provide access to a table and cannot be invalidated
+///  by filling a bucket. A similar implementation for `Take` is possible.
+pub trait Put<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V>;
+}
+
+
+impl<'t, K, V> Put<K, V> for &'t mut RawTable<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V> {
+        *self
+    }
+}
+
+impl<K, V, M> Put<K, V> for Bucket<K, V, M> where M: Put<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V> {
+        self.table.borrow_table_mut()
+    }
+}
+
+impl<K, V, M> Put<K, V> for FullBucket<K, V, M> where M: Put<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V> {
+        self.table.borrow_table_mut()
     }
 }
 
@@ -267,22 +292,14 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
 
     /// Modifies the bucket pointer in place to make it point to the next slot.
     pub fn next(&mut self) {
-        // Branchless bucket iteration step.
-        // As we reach the end of the table...
-        // We take the current idx:          0111111b
-        // Xor it by its increment:        ^ 1000000b
-        //                               ------------
-        //                                   1111111b
-        // Then AND with the capacity:     & 1000000b
-        //                               ------------
-        // to get the backwards offset:      1000000b
-        // ... and it's zero at all other times.
-        let maybe_wraparound_dist = (self.idx ^ (self.idx + 1)) & self.table.capacity();
-        // Finally, we obtain the offset 1 or the offset -cap + 1.
-        let dist = 1 - (maybe_wraparound_dist as isize);
-
         self.idx += 1;
-
+        let range = self.table.capacity();
+        // This code is branchless thanks to a conditional move.
+        let dist = if self.idx & (range - 1) == 0 {
+            1 - range as isize
+        } else {
+            1
+        };
         unsafe {
             self.raw = self.raw.offset(dist);
         }
@@ -325,7 +342,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> EmptyBucket<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> EmptyBucket<K, V, M> {
+impl<K, V, M> EmptyBucket<K, V, M> where M: Put<K, V> {
     /// Puts given key and value pair, along with the key's hash,
     /// into this bucket in the hashtable. Note how `self` is 'moved' into
     /// this function, because this slot will no longer be empty when
@@ -339,9 +356,9 @@ impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> EmptyBucket<K, V, M> {
             *self.raw.hash = hash.inspect();
             ptr::write(self.raw.key, key);
             ptr::write(self.raw.val, value);
-        }
 
-        self.table.size += 1;
+            self.table.borrow_table_mut().size += 1;
+        }
 
         FullBucket { raw: self.raw, idx: self.idx, table: self.table }
     }
@@ -364,12 +381,22 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
         }
     }
 
+    /// Duplicates the current position. This can be useful for operations
+    /// on two or more buckets.
+    pub fn stash(self) -> FullBucket<K, V, Self> {
+        FullBucket {
+            raw: self.raw,
+            idx: self.idx,
+            table: self,
+        }
+    }
+
     /// Get the distance between this bucket and the 'ideal' location
     /// as determined by the key's hash stored in it.
     ///
     /// In the cited blog posts above, this is called the "distance to
     /// initial bucket", or DIB. Also known as "probe count".
-    pub fn distance(&self) -> usize {
+    pub fn displacement(&self) -> usize {
         // Calculates the distance one has to travel when going from
         // `hash mod capacity` onwards to `idx mod capacity`, wrapping around
         // if the destination is not reached before the end of the table.
@@ -394,12 +421,15 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
+// We take a mutable reference to the table instead of accepting anything that
+// implements `DerefMut` to prevent fn `take` from being called on `stash`ed
+// buckets.
+impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
     /// Removes this bucket's key and value from the hashtable.
     ///
     /// This works similarly to `put`, building an `EmptyBucket` out of the
     /// taken bucket.
-    pub fn take(mut self) -> (EmptyBucket<K, V, M>, K, V) {
+    pub fn take(mut self) -> (EmptyBucket<K, V, &'t mut RawTable<K, V>>, K, V) {
         self.table.size -= 1;
 
         unsafe {
@@ -415,7 +445,11 @@ impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
             )
         }
     }
+}
 
+// This use of `Put` is misleading and restrictive, but safe and sufficient for our use cases
+// where `M` is a full bucket or table reference type with mutable access to the table.
+impl<K, V, M> FullBucket<K, V, M> where M: Put<K, V> {
     pub fn replace(&mut self, h: SafeHash, k: K, v: V) -> (SafeHash, K, V) {
         unsafe {
             let old_hash = ptr::replace(self.raw.hash as *mut SafeHash, h);
@@ -425,7 +459,9 @@ impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
             (old_hash, old_key, old_val)
         }
     }
+}
 
+impl<K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefMut {
     /// Gets mutable references to the key and value at a given index.
     pub fn read_mut(&mut self) -> (&mut K, &mut V) {
         unsafe {
@@ -435,7 +471,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
     }
 }
 
-impl<'t, K, V, M: Deref<Target=RawTable<K, V>> + 't> FullBucket<K, V, M> {
+impl<'t, K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + 't {
     /// Exchange a bucket state for immutable references into the table.
     /// Because the underlying reference to the table is also consumed,
     /// no further changes to the structure of the table are possible;
@@ -449,7 +485,7 @@ impl<'t, K, V, M: Deref<Target=RawTable<K, V>> + 't> FullBucket<K, V, M> {
     }
 }
 
-impl<'t, K, V, M: Deref<Target=RawTable<K, V>> + DerefMut + 't> FullBucket<K, V, M> {
+impl<'t, K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefMut + 't {
     /// This works similarly to `into_refs`, exchanging a bucket state
     /// for mutable references into the table.
     pub fn into_mut_refs(self) -> (&'t mut K, &'t mut V) {
@@ -460,17 +496,7 @@ impl<'t, K, V, M: Deref<Target=RawTable<K, V>> + DerefMut + 't> FullBucket<K, V,
     }
 }
 
-impl<K, V, M> BucketState<K, V, M> {
-    // For convenience.
-    pub fn expect_full(self) -> FullBucket<K, V, M> {
-        match self {
-            Full(full) => full,
-            Empty(..) => panic!("Expected full bucket")
-        }
-    }
-}
-
-impl<K, V, M: Deref<Target=RawTable<K, V>>> GapThenFull<K, V, M> {
+impl<K, V, M> GapThenFull<K, V, M> where M: Deref<Target=RawTable<K, V>> {
     #[inline]
     pub fn full(&self) -> &FullBucket<K, V, M> {
         &self.full
@@ -1009,7 +1035,9 @@ impl<K, V> Drop for RawTable<K, V> {
         // dropping empty tables such as on resize.
         // Also avoid double drop of elements that have been already moved out.
         unsafe {
-            for _ in self.rev_move_buckets() {}
+            if needs_drop::<(K, V)>() { // avoid linear runtime for types that don't need drop
+                for _ in self.rev_move_buckets() {}
+            }
         }
 
         let hashes_size = self.capacity * size_of::<u64>();
