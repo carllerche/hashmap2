@@ -1,8 +1,33 @@
 [package]
 
 name    = "hashmap2"
-version = "0.1.0"
-authors = ["Rust std::collections::HashMap authors",
+version = "0.2.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>",
+           "Jorge Aparicio <japaricious@gmail.com>",
+           "Alexis Beingessner <a.beingessner@gmail.com>",
+           "Brian Anderson <>",
+           "tbu- <>",
+           "Manish Goregaokar <>",
+           "Aaron Turon <aturon@mozilla.com>",
+           "Adolfo Ochagavía <>",
+           "Niko Matsakis <>",
+           "Steven Fackler <>",
+           "Chase Southwood <csouth3@illinois.edu>",
+           "Eduard Burtescu <>",
+           "Florian Wilkens <>",
+           "Félix Raimundo <>",
+           "Tibor Benke <>",
+           "Markus Siemens <markus@m-siemens.de>",
+           "Josh Branchaud <jbranchaud@gmail.com>",
+           "Huon Wilson <dbau.pp@gmail.com>",
+           "Corey Farwell <coref@rwell.org>",
+           "Aaron Liblong <>",
+           "Nick Cameron <nrc@ncameron.org>",
+           "Patrick Walton <pcwalton@mimiga.net>",
+           "Felix S Klock II <>",
+           "Andrew Paseltiner <>",
+           "Sean McArthur <sean.monstar@gmail.com>",
+           "Vadim Petrochenkov <>",
            "Carl Lerche <me@carllerche.com>"]
 
 license     = "MIT/Apache-2.0"
@@ -12,3 +37,4 @@ homepage    = "https://github.com/carllerche/hashmap2"
 
 [dependencies]
 rand = "0.3.12"
+hash-table = { git = "https://github.com/carllerche/hash-table" }
